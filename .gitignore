@@ -18,9 +18,8 @@ Thumbs.db
 
 # 输出文件（生成的docx）
 *.docx
-!scripts/build_survey_docx.py
-!references/**/*.md
 
 # 临时文件
 tmp/
 *.tmp
+output/
