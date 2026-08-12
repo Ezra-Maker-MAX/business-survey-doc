@@ -2,19 +2,31 @@
 business-survey-docx skill 使用示例
 
 演示如何调用 build_survey_docx.generate_survey_docx() 生成调研问卷。
+
+运行方式（从本目录）:
+    python example_usage.py
+    或
+    python example_usage.py --all
 """
 
+import argparse
 import os
 import sys
 
-# 添加 scripts 目录到路径
-sys.path.insert(0, os.path.join(os.path.dirname(__file__), '..', 'scripts'))
+# 添加 scripts / assets 目录到路径
+_SCRIPT_DIR = os.path.dirname(os.path.abspath(__file__))
+_SKILL_DIR = os.path.dirname(_SCRIPT_DIR)
+sys.path.insert(0, _SCRIPT_DIR)
+sys.path.insert(0, os.path.join(_SKILL_DIR, 'assets'))
 
 from build_survey_docx import generate_survey_docx
 
 
-def example_minimal():
-    """示例1：最简配置 - 手工指定少量问题"""
+def example_minimal(output_path=None):
+    """示例1：最小配置 - 手工指定少量问题（MES/生产管理场景演示）"""
+
+    if output_path is None:
+        output_path = os.path.join(_SKILL_DIR, 'output', 'example_mes_survey.docx')
 
     config = {
         'project_name': 'XX公司ERP实施项目',
@@ -26,7 +38,7 @@ def example_minimal():
             ('版本', 'V1.0', '日期', '2026-08-12'),
             ('编制方', '咨询方', '面向客户', 'XX公司'),
             ('调研主题', '生产管理业务现状', '', ''),
-            ('调研范围', '2 模块 6 个子项 / 30 条问题', '', ''),
+            ('调研范围', '2 模块 4 个子项 / 9 条问题', '', ''),
         ],
         'attending_dept': '生产部、计划部、车间主任',
         'project_context': (
@@ -36,12 +48,11 @@ def example_minimal():
         ),
 
         'toc_items': [
-            ('模块一', '生产计划管理', 'Q1-Q15', '15'),
-            ('　1.1', '主计划管理', 'Q1-Q8', '8'),
-            ('　1.2', '物料需求计划', 'Q9-Q15', '7'),
-            ('模块二', '车间执行管理', 'Q16-Q30', '15'),
-            ('　2.1', '工单管理', 'Q16-Q22', '7'),
-            ('　2.2', '工序报工', 'Q23-Q30', '8'),
+            ('模块一', '生产计划管理', 'Q1-Q7', '7'),
+            ('\u30001.1', '主计划管理', 'Q1-Q5', '5'),
+            ('\u30001.2', '物料需求计划', 'Q6-Q7', '2'),
+            ('模块二', '车间执行管理', 'Q8-Q9', '2'),
+            ('\u30002.1', '工单管理', 'Q8-Q9', '2'),
         ],
 
         'overview_items': [
@@ -64,12 +75,14 @@ def example_minimal():
                         {'idx': 2, 'level': '必问', 'q': '主计划的数据来源（订单/预测/库存）？',
                          'follow': '订单和预测的占比？', 'need': '数据源说明'},
                         {'idx': 3, 'level': '应问', 'q': '计划冻结区的设置规则？', 'need': '冻结规则文档'},
-                        # ... 更多问题
+                        {'idx': 4, 'level': '深挖', 'q': '计划排程的约束条件（产能/物料/交期）如何平衡？',
+                         'follow': '瓶颈工序如何识别？', 'need': '排程逻辑说明'},
+                        {'idx': 5, 'level': '必问', 'q': '插单/改单的处理流程？对计划的冲击如何管理？',
+                         'need': '变更管理流程'},
                     ]),
                     ('物料需求计划', [
-                        {'idx': 9, 'level': '必问', 'q': 'MRP计算的频率和逻辑？', 'need': 'MRP逻辑说明'},
-                        {'idx': 10, 'level': '应问', 'q': 'MRP异常的处理流程？', 'need': '异常处理流程'},
-                        # ...
+                        {'idx': 6, 'level': '必问', 'q': 'MRP计算的频率和逻辑？', 'need': 'MRP逻辑说明'},
+                        {'idx': 7, 'level': '应问', 'q': 'MRP异常的处理流程？', 'need': '异常处理流程'},
                     ]),
                 ],
             },
@@ -79,8 +92,8 @@ def example_minimal():
                 'intro': '车间执行包括工单下达、报工、完工入库等业务。',
                 'subs': [
                     ('工单管理', [
-                        {'idx': 16, 'level': '必问', 'q': '工单的下达、变更、关闭流程？', 'need': '工单流程文档'},
-                        # ...
+                        {'idx': 8, 'level': '必问', 'q': '工单的下达、变更、关闭流程？', 'need': '工单流程文档'},
+                        {'idx': 9, 'level': '必问', 'q': '工单与生产订单的对应关系？', 'need': '工单样例'},
                     ]),
                 ],
             },
@@ -131,53 +144,79 @@ def example_minimal():
         ],
     }
 
-    output_path = '/tmp/example_minimal.docx'
+    os.makedirs(os.path.dirname(output_path), exist_ok=True)
     generate_survey_docx(config, output_path)
-    print(f'生成成功: {output_path}')
+    print(f'✅ 示例1（MES最小配置）生成成功: {output_path}')
     return output_path
 
 
-def example_from_eam_data():
-    """示例2：使用 V4.0 EAM 数据生成完整文档"""
+def example_eam_v4(output_path=None):
+    """示例2：使用 V4.0 EAM 完整问题库生成 280 条调研问卷"""
 
-    sys.path.insert(0, os.path.join(os.path.dirname(__file__), '..', 'assets'))
-    from eam_v4_data import EAM_V4_CONFIG_SKELETON, FACTORY_QS_ORGANIZED
+    from eam_v4_data import build_eam_v4_config
 
-    # V3.0 设备问题加载（这里仅演示结构，实际需要从 xlsx 加载155条）
-    # 此处仅用工厂设施125条作为演示
-    factory_questions = []
-    idx = 156  # 工厂设施问题从156开始
-    for sub_full, qs_list in FACTORY_QS_ORGANIZED.items():
-        for orig_idx, sub_sub, level, q, follow, need in qs_list:
-            factory_questions.append({
-                'idx': idx,
-                'level': level,
-                'q': q,
-                'follow': follow,
-                'need': need,
-            })
-            idx += 1
+    if output_path is None:
+        output_path = os.path.join(_SKILL_DIR, 'output', 'example_eam_v4_survey.docx')
 
-    # 构建 1.7 工厂设施模块
-    factory_modules = []
-    factory_sub_groups = {}
-    for q in factory_questions:
-        # 提取二级子项代码
-        # 简化：每个FACTORY_QS_ORGANIZED的key作为子项
-        pass
+    config, questions = build_eam_v4_config()
 
-    # 简化为示例演示
-    config = dict(EAM_V4_CONFIG_SKELETON)
-    # modules 需要根据完整问题构建（详见 build_doc_v4.py 完整脚本）
+    os.makedirs(os.path.dirname(output_path), exist_ok=True)
+    generate_survey_docx(config, output_path)
+    print(f'✅ 示例2（EAM V4.0完整版）生成成功: {output_path}')
+    print(f'   问题总数: {len(questions)}')
+    return output_path
 
-    print('请参考 /sandbox/workspace/nvh_survey/build_doc_v4.py 查看完整的V4.0文档生成逻辑')
-    print('本示例仅展示配置结构，不实际运行（需要V3.0设备问题数据）')
+
+def verify_output(output_path):
+    """生成后简单校验"""
+    from docx import Document
+    import re
+
+    doc = Document(output_path)
+    q_indices = []
+    for p in doc.paragraphs:
+        text = p.text.strip()
+        m = re.match(r'Q(\d+)', text)
+        if m:
+            q_indices.append(int(m.group(1)))
+
+    q_indices.sort()
+    if not q_indices:
+        print('⚠️ 未找到任何问题！')
+        return False
+
+    expected = list(range(1, max(q_indices) + 1))
+    missing = set(expected) - set(q_indices)
+    print(f'   文档段落数: {len(doc.paragraphs)}')
+    print(f'   表格数: {len(doc.tables)}')
+    print(f'   问题数: {len(q_indices)} (Q{min(q_indices)}-Q{max(q_indices)})')
+    if missing:
+        print(f'   ⚠️ 缺失编号: {sorted(missing)}')
+        return False
+    print('   ✅ Q编号连续无缺失')
+    return True
 
 
 if __name__ == '__main__':
-    print('=== 示例1：最小配置 ===')
-    example_minimal()
+    parser = argparse.ArgumentParser(description='business-survey-docx 示例')
+    parser.add_argument('--all', action='store_true', help='运行所有示例')
+    parser.add_argument('--eam', action='store_true', help='仅运行EAM V4.0完整示例')
+    parser.add_argument('--output', type=str, default=None, help='输出文件路径（EAM示例）')
+    args = parser.parse_args()
 
-    print()
-    print('=== 示例2：V4.0 EAM 数据（需要完整数据） ===')
-    example_from_eam_data()
+    if args.eam:
+        path = example_eam_v4(args.output)
+        ok = verify_output(path)
+        print(f'验证结果: {"通过" if ok else "失败"}')
+    elif args.all:
+        p1 = example_minimal()
+        p2 = example_eam_v4()
+        print('\n=== 验证 ===')
+        verify_output(p1)
+        verify_output(p2)
+    else:
+        print('用法: python example_usage.py [--all | --eam] [--output PATH]')
+        print('  --all    运行所有示例')
+        print('  --eam    仅运行EAM V4.0完整版示例')
+        print()
+        print('快速体验: python example_usage.py --eam')

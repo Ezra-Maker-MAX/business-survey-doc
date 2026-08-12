@@ -104,21 +104,29 @@ generate_survey_docx(config, '/path/to/output.docx')
 ### Phase 3：验证与输出
 
 1. 运行生成脚本
-2. 用 `file_read` 验证问题数与目录
-3. 上传到知识库（如适用）
+2. **运行验证脚本**（推荐）：
+
+```bash
+python scripts/verify_survey_docx.py --strict <output.docx>
+```
+
+   验证内容：章节完整性（15/15）、Q编号连续性、问题总数、表格数、答复行数
+3. 若验证失败，检查问题编号/章节/表格后重新生成
+4. 上传到知识库（如适用）
 
 ## 资源目录
 
 ### scripts/
 - `build_survey_docx.py` - **核心脚本**：参数化的文档生成器
-- `example_usage.py` - 使用示例
+- `example_usage.py` - 使用示例（--all 运行全部，--eam 运行EAM完整版）
+- `verify_survey_docx.py` - **验证脚本**：章节/Q编号/表格完整性检查
 
 ### references/
 - `config_schema.md` - **config 字段定义**（必读）
 - `eam_question_bank.md` - EAM 问题库说明（280条问题概览）
 
 ### assets/
-- `eam_v4_data.py` - 完整的 V4.0 EAM 问题库与 config 骨架（125条工厂设施问题 + 资源 + 使用说明）
+- `eam_v4_data.py` - **完整的 V4.0 EAM 问题库**（280条问题：V3.0设备155条+工厂设施125条）+ `build_eam_v4_config()` 完整构建函数
 
 ## 输出位置
 
@@ -129,14 +137,19 @@ generate_survey_docx(config, '/path/to/output.docx')
 
 ### 场景1：EAM调研（直接复用 V4.0）
 
-读取 `assets/eam_v4_data.py`，结合 V3.0 设备问题（155条），构建完整 config。
-完整构建逻辑见 `scripts/example_usage.py` 的 `example_from_eam_data()`。
+```python
+from assets.eam_v4_data import build_eam_v4_config
+from scripts.build_survey_docx import generate_survey_docx
+
+config, questions = build_eam_v4_config()  # 280条问题完整config
+generate_survey_docx(config, 'eam_survey.docx')
+```
 
 ### 场景2：MES生产管理调研
 
 参考 `scripts/example_usage.py` 的 `example_minimal()`，按业务自定义：
 - modules：生产计划/物料需求/工单管理/工序报工
-- 调研问题：根据业务设计（每子项 5-15 条）
+- 调研问题：根据业务设计（每子项 3-8 条，Q编号全局连续）
 
 ### 场景3：通用业务调研
 

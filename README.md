@@ -63,9 +63,21 @@ generate_survey_docx(config, 'output.docx')
 ## 资源
 
 - `scripts/build_survey_docx.py` - 核心生成器
+- `scripts/example_usage.py` - 使用示例（--all / --eam）
+- `scripts/verify_survey_docx.py` - 验证脚本（章节/Q编号/表格完整性）
 - `references/config_schema.md` - 配置 Schema
 - `references/eam_question_bank.md` - EAM 问题库说明
-- `assets/eam_v4_data.py` - V4.0 EAM 完整问题库与 config 骨架
+- `assets/eam_v4_data.py` - 完整 EAM 问题库（280条）+ `build_eam_v4_config()` 构建函数
+
+## 快速体验
+
+```bash
+# 生成 EAM V4.0 完整版（280条问题）
+python scripts/example_usage.py --eam
+
+# 验证生成的文档
+python scripts/verify_survey_docx.py --strict output/example_eam_v4_survey.docx
+```
 
 ## 依赖
 
