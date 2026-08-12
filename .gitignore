@@ -1,0 +1,26 @@
+# Python
+__pycache__/
+*.py[cod]
+*$py.class
+*.so
+.Python
+*.egg-info/
+
+# IDE
+.vscode/
+.idea/
+*.swp
+*.swo
+
+# OS
+.DS_Store
+Thumbs.db
+
+# 输出文件（生成的docx）
+*.docx
+!scripts/build_survey_docx.py
+!references/**/*.md
+
+# 临时文件
+tmp/
+*.tmp
