@@ -1,10 +1,11 @@
 # business-survey-docx
 
-业务调研问卷 Word 文档生成 Skill。
+业务调研问卷 Word 文档生成 Skill —— 支持**任意业务领域**。
 
 ## 功能
 
 根据调研业务范围与调研对象，自动生成符合标准格式的 Word 调研问卷（.docx）。
+内置**多业务域专家问题库**（EAM/财务/质量/采购），未覆盖领域按专家方法论即时设计问题。
 
 ## 文档结构
 
@@ -23,65 +24,74 @@
 签字确认栏
 ```
 
+## 内置领域专家库
+
+| 领域ID | 名称 | 问题数 | 覆盖范围 |
+|---|---|---|---|
+| `eam` | 设备资产管理 | 280 | 设备/TPM/备件/模具 + 工厂设施 |
+| `finance` | 财务与会计 | 32 | 总账/应收应付/成本/资产/资金/预算 |
+| `quality` | 质量管理 | 27 | 体系/来料/过程/成品/实验室/追溯 |
+| `procurement` | 采购与供应商管理 | 25 | 策略/供应商/寻源/执行/结算/分析 |
+
 ## 快速开始
 
-```python
-from scripts.build_survey_docx import generate_survey_docx
+```bash
+# 列出可用领域
+python scripts/example_usage.py --list
 
-config = {
-    'project_name': 'XXX项目',
-    'doc_title': '业务调研问卷',
-    'info_rows': [...],
-    'attending_dept': '...',
-    'project_context': '...',
-    'toc_items': [...],
-    'overview_items': [...],
-    'modules': [...],
-    'interview_topics': [...],
-    'it_systems': [...],
-    'data_flows': [...],
-    'reports': [...],
-    'resources': [...],
-    'summary_dims': [...],
-    'usage': [...],
-    'signers': [...],
-}
+# 生成指定领域问卷
+python scripts/example_usage.py --domain finance --project "XX项目" --customer "XX公司"
 
-generate_survey_docx(config, 'output.docx')
+# 生成所有领域
+python scripts/example_usage.py --all
 ```
 
-详细 config 字段定义见 [`references/config_schema.md`](references/config_schema.md)。
+### 代码调用
 
-## 适用领域
+```python
+from domains import load_domain
+from domain_to_config import domain_to_config
+from build_survey_docx import generate_survey_docx
 
-- EAM/设备管理调研
-- MES/生产管理调研
-- WMS/仓库管理调研
-- QMS/质量管理调研
-- 其他通用业务调研
+domain = load_domain('eam')
+config = domain_to_config(domain, project_name='XX项目', customer='XX公司', date='20260812')
+generate_survey_docx(config, 'output.docx')
+
+# 验证
+python scripts/verify_survey_docx.py --strict output.docx
+```
+
+## 扩展新领域
+
+未覆盖领域（如 HR、供应链、销售等）：
+1. 按 `references/question_design_methodology.md` 方法论即时设计问题
+2. 沉淀为新专家库：复制 `assets/domains/_template.py` → 填写 DOMAIN → 在 `__init__.py` 注册
 
 ## 资源
 
-- `scripts/build_survey_docx.py` - 核心生成器
-- `scripts/example_usage.py` - 使用示例（--all / --eam）
-- `scripts/verify_survey_docx.py` - 验证脚本（章节/Q编号/表格完整性）
-- `references/config_schema.md` - 配置 Schema
-- `references/eam_question_bank.md` - EAM 问题库说明
-- `assets/eam_v4_data.py` - 完整 EAM 问题库（280条）+ `build_eam_v4_config()` 构建函数
+```
+assets/
+├── domains/              # 多领域专家问题库（核心）
+│   ├── __init__.py       # 注册表：load_domain / match_domain / list_domains
+│   ├── _template.py      # 新领域模板
+│   ├── eam.py            # 设备资产管理（280条）
+│   ├── finance.py        # 财务与会计（32条）
+│   ├── quality.py        # 质量管理（27条）
+│   └── procurement.py    # 采购与供应商管理（25条）
+└── domain_to_config.py   # DOMAIN → config 转换器
 
-## 快速体验
+scripts/
+├── build_survey_docx.py  # 核心生成器
+├── example_usage.py      # 多领域示例
+└── verify_survey_docx.py # 验证脚本
 
-```bash
-# 生成 EAM V4.0 完整版（280条问题）
-python scripts/example_usage.py --eam
-
-# 验证生成的文档
-python scripts/verify_survey_docx.py --strict output/example_eam_v4_survey.docx
+references/
+├── config_schema.md                  # 配置 Schema
+├── question_design_methodology.md    # 问题设计方法论
+└── eam_question_bank.md              # 领域专家库说明
 ```
 
 ## 依赖
-
-- python-docx
 
 ```bash
 pip install python-docx

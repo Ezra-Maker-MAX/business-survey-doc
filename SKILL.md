@@ -1,6 +1,6 @@
 ---
 name: business-survey-docx
-description: 业务调研问卷 Word 文档生成。生成符合标准格式的业务调研问卷 .docx 文档（封面+参会人员+调研说明+目录+总体概述+5个现状描述+高层访谈+IT/数据/报表+5附录+签字栏）。当用户要求"生成调研问卷"、"做调研文档"、"写业务调研问题清单"、"制作设备调研问卷"、"制作生产调研问卷"等需要结构化问卷输出时触发。不适用于PPT/Excel/纯文本问卷。
+description: 业务调研问卷 Word 文档生成，支持任意业务领域。当用户要求"生成调研问卷"、"做调研文档"、"写调研问题清单"、"业务调研问卷"、"EAM/设备调研"、"财务调研"、"质量调研"、"采购调研"、"MES调研"、"HR调研"等需要结构化问卷输出时触发。内置多业务域专家问题库（EAM/财务/质量/采购），未覆盖领域按专家方法论即时设计问题。不适用于PPT/Excel/纯文本问卷。
 ---
 
 # Business Survey Docx 业务调研问卷生成
@@ -8,20 +8,15 @@ description: 业务调研问卷 Word 文档生成。生成符合标准格式的�
 ## 概述
 
 将调研业务范围与调研对象转换为符合标准格式的 Word 调研问卷（.docx）。
-文档结构参照经过生产验证的 V4.0 EAM 调研问卷模板。
+支持**任意业务领域**：内置多领域专家问题库，未覆盖领域按专家方法论即时设计。
 
-## 适用场景
+## 核心能力
 
-需要为任何业务领域生成结构化调研问卷，包括但不限于：
-- 设备/资产管理(EAM)调研
-- MES/生产管理调研
-- WMS/仓库管理调研
-- QMS/质量管理调研
-- 财务/HR/采购等通用业务调研
+1. **多领域专家库**：预置 EAM/财务/质量/采购 4 个领域专家问题库，直接输出高质量问卷
+2. **任意范围支持**：未覆盖领域按 `references/question_design_methodology.md` 方法论即时设计问题
+3. **统一文档格式**：所有领域输出相同结构的 docx（9章+5附录+签字栏）
 
 ## 文档结构（强制）
-
-生成的 docx 必须包含以下 9 章正文 + 5 附录 + 签字栏：
 
 ```
 封面（项目名称 + 文档标题 + 项目信息表）
@@ -58,102 +53,73 @@ Q{n}  [必问/应问/深挖]  问题内容
 
 ## 工作流程
 
-### Phase 1：需求理解
+### Phase 1：识别业务领域
 
 读取用户输入，识别：
-1. **调研对象**：公司/项目名称（如"亚新科NVH"、"XX工厂"）
-2. **业务范围**：模块清单（如"EAM、MES"或"生产管理、仓库管理"）
-3. **问题库选择**：使用内置问题库（见 references/eam_question_bank.md）或基于模板生成新问题
-4. **元信息**：版本、日期、文档编号
-
-**如信息不全，先向用户确认再生成。**
-
-### Phase 2：构建配置
-
-调用 `generate_survey_docx(config, output_path)` 生成文档。
-config 字段定义见 `references/config_schema.md`。
-
-**快速配置模板**：
+1. **调研对象**：公司/项目名称
+2. **业务范围**：模块/子项描述
+3. **业务领域**：调用 `domains.match_domain(描述)` 识别
 
 ```python
-from scripts.build_survey_docx import generate_survey_docx
-
-config = {
-    'project_name': 'XXX项目',
-    'doc_title': '业务调研问卷',
-    'subtitle': '（V1.0）',
-    'info_rows': [...],
-    'attending_dept': '...',
-    'project_context': '...',
-    'toc_items': [...],
-    'overview_items': [...],
-    'modules': [...],
-    'interview_topics': [...],
-    'it_systems': [...],
-    'data_flows': [...],
-    'reports': [...],
-    'resources': [...],
-    'summary_dims': [...],
-    'usage': [...],
-    'signers': [...],
-}
-
-generate_survey_docx(config, '/path/to/output.docx')
+from domains import match_domain, list_domains
+domain_id, domain = match_domain('财务核算和预算管理')  # → ('finance', DOMAIN)
 ```
 
-### Phase 3：验证与输出
+### Phase 2：选择问题来源
 
-1. 运行生成脚本
-2. **运行验证脚本**（推荐）：
+| 情况 | 处理方式 |
+|---|---|
+| **命中专家库** | 直接加载 `domains.load_domain(id)`，按需增删子项 |
+| **未命中** | 按 `references/question_design_methodology.md` 方法论即时设计 |
+| **部分命中** | 专家库为主，方法论补缺 |
+
+先运行 `--list` 查看可用领域：
+```bash
+python scripts/example_usage.py --list
+```
+
+### Phase 3：构建配置并生成
+
+```python
+from domains import load_domain
+from domain_to_config import domain_to_config
+from build_survey_docx import generate_survey_docx
+
+domain = load_domain('finance')
+config = domain_to_config(domain, project_name='XX项目', customer='XX公司', date='20260812')
+generate_survey_docx(config, 'output.docx')
+```
+
+### Phase 4：验证与输出
 
 ```bash
 python scripts/verify_survey_docx.py --strict <output.docx>
 ```
 
-   验证内容：章节完整性（15/15）、Q编号连续性、问题总数、表格数、答复行数
-3. 若验证失败，检查问题编号/章节/表格后重新生成
-4. 上传到知识库（如适用）
+验证内容：章节完整性（15/15）、Q编号连续性、问题总数、表格数、答复行数。
+若验证失败，检查问题编号/章节/表格后重新生成。
 
 ## 资源目录
 
+### assets/
+- `domains/` - **多领域专家问题库**（核心）
+  - `__init__.py` - 领域注册表（`load_domain` / `match_domain` / `list_domains`）
+  - `_template.py` - 新领域专家库模板（复制即用）
+  - `eam.py` - 设备资产管理（280条）
+  - `finance.py` - 财务与会计（32条）
+  - `quality.py` - 质量管理（27条）
+  - `procurement.py` - 采购与供应商管理（25条）
+- `domain_to_config.py` - **DOMAIN → config 转换器**
+
 ### scripts/
-- `build_survey_docx.py` - **核心脚本**：参数化的文档生成器
-- `example_usage.py` - 使用示例（--all 运行全部，--eam 运行EAM完整版）
-- `verify_survey_docx.py` - **验证脚本**：章节/Q编号/表格完整性检查
+- `build_survey_docx.py` - **核心生成器**（通用，不依赖具体领域）
+- `example_usage.py` - 多领域示例（--list / --domain / --all）
+- `verify_survey_docx.py` - 验证脚本
 
 ### references/
-- `config_schema.md` - **config 字段定义**（必读）
-- `eam_question_bank.md` - EAM 问题库说明（280条问题概览）
-
-### assets/
-- `eam_v4_data.py` - **完整的 V4.0 EAM 问题库**（280条问题：V3.0设备155条+工厂设施125条）+ `build_eam_v4_config()` 完整构建函数
-
-## 输出位置
-
-生成的 docx 默认保存到 `/sandbox/workspace/` 或用户指定路径。
-建议使用文件命名规范：`[项目缩写]_[业务]_[描述]_V[版本]_[日期].docx`
-
-## 常见场景
-
-### 场景1：EAM调研（直接复用 V4.0）
-
-```python
-from assets.eam_v4_data import build_eam_v4_config
-from scripts.build_survey_docx import generate_survey_docx
-
-config, questions = build_eam_v4_config()  # 280条问题完整config
-generate_survey_docx(config, 'eam_survey.docx')
-```
-
-### 场景2：MES生产管理调研
-
-参考 `scripts/example_usage.py` 的 `example_minimal()`，按业务自定义：
-- modules：生产计划/物料需求/工单管理/工序报工
-- 调研问题：根据业务设计（每子项 3-8 条，Q编号全局连续）
-
-### 场景3：通用业务调研
-
-按 config schema 配置，可用于任何业务领域的调研问卷生成。
+- `config_schema.md` - config 字段定义
+- `question_design_methodology.md` - **问题设计方法论**（未覆盖领域时使用）
+- `eam_question_bank.md` - EAM 问题库说明（历史参考）
 
 ## 设计原则
 
@@ -162,6 +128,16 @@ generate_survey_docx(config, 'eam_survey.docx')
 3. **可填写**：每条问题预留"答复"行，便于现场填写
 4. **可追溯**：资料索取清单 + 现场抽查表 + 痛点需求池 全流程可追溯
 5. **签字闭环**：业务、IT、项目经理三方签字确认
+
+## 扩展新领域
+
+用户提出未覆盖领域时：
+1. 按方法论（references/question_design_methodology.md）设计问题
+2. 生成问卷后**沉淀为新专家库**：
+   - 复制 `domains/_template.py` 为 `domains/<新领域>.py`
+   - 填入 DOMAIN 字典
+   - 在 `domains/__init__.py` 注册
+3. 下次同类调研直接命中专家库
 
 ## 注意事项
 
